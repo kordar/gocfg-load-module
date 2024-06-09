@@ -1,0 +1,1 @@
+# gocfg-load-module
