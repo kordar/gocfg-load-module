@@ -1,4 +1,4 @@
-package starter
+package gocfg_loadmodule
 
 type LoadModule interface {
 	Name() string
