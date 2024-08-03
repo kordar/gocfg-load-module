@@ -32,3 +32,11 @@ func Destroy() {
 		modules[name].Close()
 	}
 }
+
+func ResolveAll(settings map[string]interface{}) {
+	for _, name := range regs {
+		if settings[name] != nil {
+			Resolve(name, settings[name])
+		}
+	}
+}
