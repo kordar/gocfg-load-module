@@ -9,6 +9,7 @@ type GoCfgModule interface {
 var (
 	modules = map[string]GoCfgModule{}
 	regs    = make([]string, 0)
+	needs   = make(map[string]bool) // Module必须实现
 )
 
 func Register(mod GoCfgModule) {
@@ -16,6 +17,18 @@ func Register(mod GoCfgModule) {
 		regs = append(regs, mod.Name())
 	}
 	modules[mod.Name()] = mod
+}
+
+func SetNeeds(m map[string]bool) {
+	needs = m
+}
+
+func Register2(mod GoCfgModule, need bool) {
+	if modules[mod.Name()] == nil {
+		regs = append(regs, mod.Name())
+	}
+	modules[mod.Name()] = mod
+	needs[mod.Name()] = need
 }
 
 func Resolve(name string, setting interface{}) {
@@ -37,6 +50,8 @@ func ResolveAll(settings map[string]interface{}) {
 	for _, name := range regs {
 		if settings[name] != nil {
 			Resolve(name, settings[name])
+		} else if needs[name] {
+			Resolve(name, nil)
 		}
 	}
 }
