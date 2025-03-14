@@ -1,34 +1,35 @@
 package gocfgmodule
 
-type GoCfgModule interface {
-	Name() string
-	Load(data interface{})
-	Close()
-}
+import "fmt"
 
-var (
-	modules = map[string]GoCfgModule{}
-	regs    = make([]string, 0)
-	needs   = make(map[string]bool) // Module必须实现
-)
-
-func Register(mod GoCfgModule) {
+func Register(mod GoCfgModule, depends ...string) {
+	if mod.Name() == "" {
+		fmt.Println("module name is empty")
+		return
+	}
 	if modules[mod.Name()] == nil {
 		regs = append(regs, mod.Name())
 	}
 	modules[mod.Name()] = mod
-}
-
-func SetNeeds(m map[string]bool) {
-	needs = m
-}
-
-func Register2(mod GoCfgModule, need bool) {
-	if modules[mod.Name()] == nil {
-		regs = append(regs, mod.Name())
+	// 判断对象是否实现了depends接口
+	if v, ok := mod.(GoCfgDepends); ok {
+		if v.Depends() != nil && len(v.Depends()) > 0 {
+			dependency[mod.Name()] = v.Depends()
+		}
 	}
-	modules[mod.Name()] = mod
-	needs[mod.Name()] = need
+	if len(depends) > 0 {
+		for _, depend := range depends {
+			if mod.Name() != depend {
+				dependency[mod.Name()] = append(dependency[mod.Name()], depend)
+			}
+		}
+	}
+
+}
+
+func RegisterWithRequired(mod GoCfgModule, required bool) {
+	Register(mod)
+	AddRequired(mod.Name())
 }
 
 func Resolve(name string, setting interface{}) {
@@ -46,11 +47,19 @@ func Destroy() {
 	}
 }
 
+func RefreshDepends(method RefreshDependsMethod) {
+	if method == nil {
+		regs = defaultRefreshDependsMethod(regs, dependency)
+	} else {
+		regs = method(regs, dependency)
+	}
+}
+
 func ResolveAll(settings map[string]interface{}) {
 	for _, name := range regs {
 		if settings[name] != nil {
 			Resolve(name, settings[name])
-		} else if needs[name] {
+		} else if IsRequired(name) {
 			Resolve(name, nil)
 		}
 	}
